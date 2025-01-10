@@ -435,29 +435,26 @@ plt.xlabel('Recall Value', fontsize=16)
 plt.show()
 
 import streamlit as st
+import numpy as np
 
-# Title and instructions
 st.title("Heart Disease Prediction")
 st.write("Enter the patient's details to predict the likelihood of heart disease.")
 
-# User input with sliders and labels
+# User inputs
 age = st.slider("Age (years)", 20, 100, 50)
 trestbps = st.slider("Blood Pressure (mm Hg)", 90, 200, 120)
 chol = st.slider("Cholesterol Level (mg/dL)", 100, 350, 220)
-thalach = st.slider("Maximum Heart Rate (bpm)", 60, 220, 140)
+thalach = st.slider("Maximum Heart Rate (bpm)", 60, 220, 207)
 oldpeak = st.slider("ST Depression (oldpeak)", 0.0, 6.0, 1.0)
 
-# Show input summary
-st.write(f"Age: {age}")
-st.write(f"Blood Pressure: {trestbps} mm Hg")
-st.write(f"Cholesterol: {chol} mg/dL")
-st.write(f"Max Heart Rate: {thalach} bpm")
-st.write(f"Oldpeak: {oldpeak}")
-
-# Prediction button (you can replace with your model's prediction function)
+# Predict button
 if st.button("Predict"):
-    prediction = predict_heart_disease(age, trestbps, chol, thalach, oldpeak)
-    st.write(f"Prediction: {prediction}")
+    input_data = np.array([[age, trestbps, chol, thalach, oldpeak]])
+    prediction = model.predict(input_data)
+    if prediction[0] == 1:
+        st.write("Prediction: Likely to have heart disease")
+    else:
+        st.write("Prediction: Unlikely to have heart disease")
 
 
 
