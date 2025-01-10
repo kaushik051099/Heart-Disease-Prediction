@@ -434,9 +434,14 @@ plt.title("Recall for Positive Class across Models", fontweight='bold', fontsize
 plt.xlabel('Recall Value', fontsize=16)
 plt.show()
 
-import streamlit as st
 import numpy as np
+import streamlit as st
+import joblib
 
+# Load the trained model
+model = joblib.load("path_to_trained_model.pkl")
+
+# Title and instructions
 st.title("Heart Disease Prediction")
 st.write("Enter the patient's details to predict the likelihood of heart disease.")
 
@@ -455,6 +460,7 @@ if st.button("Predict"):
         st.write("Prediction: Likely to have heart disease")
     else:
         st.write("Prediction: Unlikely to have heart disease")
+
 
 
 
