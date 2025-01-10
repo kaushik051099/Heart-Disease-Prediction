@@ -438,9 +438,6 @@ import numpy as np
 import streamlit as st
 import joblib
 
-# Load the trained model
-model = joblib.load("path_to_trained_model.pkl")
-
 # Title and instructions
 st.title("Heart Disease Prediction")
 st.write("Enter the patient's details to predict the likelihood of heart disease.")
