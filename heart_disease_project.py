@@ -452,6 +452,7 @@ chol = st.slider("Cholesterol Level (mg/dL)", 100, 350, 220)
 thalach = st.slider("Maximum Heart Rate (bpm)", 60, 220, 207)
 oldpeak = st.slider("ST Depression (oldpeak)", 0.0, 6.0, 1.0)
 
+
 # Predict button
 if st.button("Predict"):
     input_data = np.array([[age, trestbps, chol, thalach, oldpeak]])
