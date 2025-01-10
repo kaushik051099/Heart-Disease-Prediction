@@ -125,4 +125,12 @@ st.write(f"Oldpeak: {oldpeak}")
 if st.button("Predict"):
     prediction = predict_heart_disease(age, trestbps, chol, thalach, oldpeak)
     st.write(f"Prediction: {prediction}")
-
+    
+# Predict button
+if st.button("Predict"):
+    input_data = np.array([[age, trestbps, chol, thalach, oldpeak]])
+    prediction = model.predict(input_data)
+    if prediction[0] == 1:
+        st.write("Prediction: Likely to have heart disease")
+    else:
+        st.write("Prediction: Unlikely to have heart disease")
