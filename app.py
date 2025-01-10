@@ -100,3 +100,29 @@ st.write(results_df)
 
 # Best Model Visualization
 st.bar_chart(results_df.set_index("Model"))
+
+import streamlit as st
+
+# Title and instructions
+st.title("Heart Disease Prediction")
+st.write("Enter the patient's details to predict the likelihood of heart disease.")
+
+# User input with sliders and labels
+age = st.slider("Age (years)", 20, 100, 50)
+trestbps = st.slider("Blood Pressure (mm Hg)", 90, 200, 120)
+chol = st.slider("Cholesterol Level (mg/dL)", 100, 350, 220)
+thalach = st.slider("Maximum Heart Rate (bpm)", 60, 220, 140)
+oldpeak = st.slider("ST Depression (oldpeak)", 0.0, 6.0, 1.0)
+
+# Show input summary
+st.write(f"Age: {age}")
+st.write(f"Blood Pressure: {trestbps} mm Hg")
+st.write(f"Cholesterol: {chol} mg/dL")
+st.write(f"Max Heart Rate: {thalach} bpm")
+st.write(f"Oldpeak: {oldpeak}")
+
+# Prediction button (you can replace with your model's prediction function)
+if st.button("Predict"):
+    prediction = predict_heart_disease(age, trestbps, chol, thalach, oldpeak)
+    st.write(f"Prediction: {prediction}")
+
