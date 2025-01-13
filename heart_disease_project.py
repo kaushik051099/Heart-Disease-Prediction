@@ -1,55 +1,58 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-from sklearn.pipeline import Pipeline
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+import joblib
 from scipy.stats import boxcox
-import warnings
-warnings.filterwarnings('ignore')
 
-def load_and_preprocess_data(file_path='heart.csv'):
-    """Load and preprocess the dataset"""
-    df = pd.read_csv(file_path)
+def load_and_prepare_data():
+    """Load and prepare the heart disease dataset."""
+    df = pd.read_csv('heart.csv')
     
-    # One-hot encoding for specific categorical features
+    # One-hot encoding for categorical variables
     df_encoded = pd.get_dummies(df, columns=['cp', 'restecg', 'thal'], drop_first=True)
     
     # Convert other categorical variables to integer
-    features_to_convert = ['sex', 'fbs', 'exang', 'slope', 'ca']
+    features_to_convert = ['sex', 'fbs', 'exang', 'slope', 'ca', 'target']
     for feature in features_to_convert:
         df_encoded[feature] = df_encoded[feature].astype(int)
     
     return df_encoded
 
-def create_model():
-    """Create the SVM pipeline with the best parameters"""
-    return Pipeline([
-        ('scaler', StandardScaler()),
-        ('svm', SVC(C=1, kernel='rbf', gamma='scale', probability=True))
-    ])
-
-def plot_feature_distribution(df, feature):
-    """Plot the distribution of a feature by target"""
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.boxplot(data=df, x='target', y=feature, ax=ax)
-    ax.set_title(f'{feature} Distribution by Heart Disease Status')
-    ax.set_xlabel('Heart Disease Present')
-    ax.set_ylabel(feature)
-    return fig
-
-def main():
-    st.title("❤️ Heart Disease Prediction App")
+def train_model(df):
+    """Train the Random Forest model with optimized parameters."""
+    X = df.drop('target', axis=1)
+    y = df['target']
     
-    # Sidebar for navigation
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Prediction", "Data Analysis", "Model Information"])
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    if page == "Prediction":
-        st.header("Patient Information")
-        st.write("Please enter the patient's medical information below:")
+    # Use the optimized parameters from our analysis
+    rf_model = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=3,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        bootstrap=True,
+        random_state=42
+    )
+    
+    rf_model.fit(X_train, y_train)
+    return rf_model, X_train.columns
+
+def create_prediction_interface():
+    """Create the main prediction interface."""
+    st.title("Heart Disease Risk Assessment")
+    st.write("This application helps assess the risk of heart disease based on various health parameters.")
+    
+    # Create tabs for different sections
+    tab1, tab2, tab3 = st.tabs(["Risk Assessment", "Patient Information", "About Heart Disease"])
+    
+    with tab1:
+        st.subheader("Enter Patient's Medical Information")
         
         col1, col2 = st.columns(2)
         
@@ -67,139 +70,123 @@ def main():
                                  ["Normal", "ST-T Wave Abnormality", "Left Ventricular Hypertrophy"])
             thalach = st.number_input("Maximum Heart Rate", 60, 220, 150)
             exang = st.selectbox("Exercise Induced Angina", ["No", "Yes"])
-            oldpeak = st.number_input("ST Depression", 0.0, 6.0, 1.0, 0.1)
+            oldpeak = st.number_input("ST Depression", 0.0, 6.0, 0.0, 0.1)
             
         col3, col4 = st.columns(2)
-        
         with col3:
-            slope = st.selectbox("ST Slope", ["Upsloping", "Flat", "Downsloping"])
-            ca = st.selectbox("Number of Major Vessels", [0, 1, 2, 3, 4])
+            slope = st.selectbox("Slope of Peak Exercise ST Segment", 
+                               ["Upsloping", "Flat", "Downsloping"])
+            ca = st.selectbox("Number of Major Vessels", ["0", "1", "2", "3"])
             
         with col4:
             thal = st.selectbox("Thalassemia", ["Normal", "Fixed Defect", "Reversible Defect"])
         
-        if st.button("Predict"):
-            # Create feature dictionary
-            features = {
-                'age': age,
-                'sex': 1 if sex == "Male" else 0,
-                'trestbps': trestbps,
-                'chol': chol,
-                'fbs': 1 if fbs == "Yes" else 0,
-                'thalach': thalach,
-                'exang': 1 if exang == "Yes" else 0,
-                'oldpeak': oldpeak,
-                'slope': ["Upsloping", "Flat", "Downsloping"].index(slope),
-                'ca': ca
-            }
+        if st.button("Assess Risk", type="primary"):
+            # Prepare input data
+            sex = 1 if sex == "Male" else 0
+            fbs = 1 if fbs == "Yes" else 0
+            exang = 1 if exang == "Yes" else 0
             
-            # Add chest pain type one-hot encoded columns
-            cp_types = ["Typical Angina", "Atypical Angina", "Non-anginal Pain", "Asymptomatic"]
-            cp_idx = cp_types.index(cp)
-            for i in range(1, 4):
-                features[f'cp_{i}'] = 1 if cp_idx == i else 0
-                
-            # Add resting ECG one-hot encoded columns
-            restecg_types = ["Normal", "ST-T Wave Abnormality", "Left Ventricular Hypertrophy"]
-            restecg_idx = restecg_types.index(restecg)
-            for i in range(1, 3):
-                features[f'restecg_{i}'] = 1 if restecg_idx == i else 0
-                
-            # Add thalassemia one-hot encoded columns
-            thal_types = ["Normal", "Fixed Defect", "Reversible Defect"]
-            thal_idx = thal_types.index(thal)
-            for i in range(1, 3):
-                features[f'thal_{i}'] = 1 if thal_idx == i else 0
+            # Convert categorical variables to match training data format
+            cp_dict = {"Typical Angina": 0, "Atypical Angina": 1, 
+                      "Non-anginal Pain": 2, "Asymptomatic": 3}
+            restecg_dict = {"Normal": 0, "ST-T Wave Abnormality": 1, 
+                           "Left Ventricular Hypertrophy": 2}
+            slope_dict = {"Upsloping": 0, "Flat": 1, "Downsloping": 2}
+            thal_dict = {"Normal": 1, "Fixed Defect": 2, "Reversible Defect": 3}
             
-            # Create input array
-            input_data = pd.DataFrame([features])
+            # Create feature array
+            features = [age, sex, cp_dict[cp], trestbps, chol, fbs, 
+                       restecg_dict[restecg], thalach, exang, oldpeak, 
+                       slope_dict[slope], int(ca), thal_dict[thal]]
             
             # Make prediction
-            try:
-                model = create_model()
-                # Note: In a real application, you would load a pre-trained model here
-                # model = joblib.load('heart_disease_model.pkl')
-                prediction = model.predict_proba(input_data)[0]
-                
-                # Display prediction
-                st.subheader("Prediction Results")
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.metric("Risk of Heart Disease", f"{prediction[1]:.1%}")
-                
-                # Display interpretation
-                if prediction[1] > 0.5:
-                    st.warning("⚠️ High risk of heart disease detected. Please consult a healthcare professional.")
+            prediction = model.predict([features])[0]
+            probability = model.predict_proba([features])[0][1]
+            
+            # Display result with custom styling
+            st.markdown("---")
+            st.subheader("Assessment Result")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if prediction == 1:
+                    st.error("⚠️ Higher Risk of Heart Disease")
                 else:
-                    st.success("✅ Low risk of heart disease detected. However, maintain a healthy lifestyle.")
-                
-                # Recommendation based on input values
-                st.subheader("Recommendations")
-                recommendations = []
-                
-                if chol > 200:
-                    recommendations.append("- Consider lifestyle changes to reduce cholesterol levels")
-                if trestbps > 140:
-                    recommendations.append("- Monitor blood pressure regularly")
-                if thalach > 180:
-                    recommendations.append("- Discuss maximum heart rate with your doctor")
-                
-                if recommendations:
-                    st.write("\n".join(recommendations))
-                
-            except Exception as e:
-                st.error(f"An error occurred during prediction: {str(e)}")
-    
-    elif page == "Data Analysis":
-        st.header("Data Analysis")
-        try:
-            df = load_and_preprocess_data()
+                    st.success("✅ Lower Risk of Heart Disease")
             
-            # Show data distribution
-            st.subheader("Feature Distributions")
-            feature = st.selectbox("Select Feature", 
-                                 ['age', 'trestbps', 'chol', 'thalach', 'oldpeak'])
+            with col2:
+                st.metric("Risk Probability", f"{probability:.1%}")
             
-            fig = plot_feature_distribution(df, feature)
-            st.pyplot(fig)
+            # Show risk factors and recommendations
+            st.markdown("### Key Risk Factors")
+            risk_factors = []
+            if age > 60:
+                risk_factors.append("Age above 60")
+            if trestbps > 140:
+                risk_factors.append("High blood pressure")
+            if chol > 200:
+                risk_factors.append("High cholesterol")
+            if thalach < 100:
+                risk_factors.append("Low maximum heart rate")
             
-            # Show correlation matrix
-            st.subheader("Correlation Matrix")
-            numeric_cols = ['age', 'trestbps', 'chol', 'thalach', 'oldpeak']
-            corr = df[numeric_cols].corr()
+            if risk_factors:
+                for factor in risk_factors:
+                    st.warning(factor)
+                    
+                st.info("📋 Recommendation: Please consult with a healthcare provider for a thorough evaluation.")
             
-            fig, ax = plt.subplots(figsize=(10, 8))
-            sns.heatmap(corr, annot=True, cmap='coolwarm', center=0, ax=ax)
-            st.pyplot(fig)
-            
-        except Exception as e:
-            st.error(f"Error in data analysis: {str(e)}")
-    
-    else:  # Model Information
-        st.header("Model Information")
-        st.write("""
-        ### About the Model
-        This application uses a Support Vector Machine (SVM) classifier with the following characteristics:
-        
-        - **Algorithm**: Support Vector Machine with RBF kernel
-        - **Features**: 13 clinical features including:
-          - Demographics (age, sex)
-          - Vital signs (blood pressure, heart rate)
-          - Laboratory results (cholesterol, blood sugar)
-          - ECG measurements
-          - Exercise test results
-        
-        ### Model Performance
-        - Accuracy: ~84%
-        - Sensitivity (Recall): ~86%
-        - Specificity: ~82%
-        
-        ### Important Notes
-        - This tool is for educational purposes only
-        - Always consult healthcare professionals for medical advice
-        - Regular check-ups are important for heart health
+    with tab2:
+        st.subheader("Understanding Your Input Parameters")
+        st.markdown("""
+        - **Age**: Patient's age in years
+        - **Blood Pressure**: Resting blood pressure in mm Hg
+        - **Cholesterol**: Serum cholesterol in mg/dl
+        - **Maximum Heart Rate**: Maximum heart rate achieved during exercise
+        - **ST Depression**: ST depression induced by exercise relative to rest
+        - **Number of Major Vessels**: Number of major vessels colored by fluoroscopy
+        - **Chest Pain Type**: Type of chest pain experienced
+        - **Thalassemia**: Blood disorder affecting oxygen-carrying capacity
         """)
+        
+    with tab3:
+        st.subheader("About Heart Disease")
+        st.markdown("""
+        Heart disease is the leading cause of death globally. Key risk factors include:
+        
+        1. **High Blood Pressure**: Consistently elevated blood pressure can damage arteries
+        2. **High Cholesterol**: Can lead to buildup of plaque in arteries
+        3. **Smoking**: Damages blood vessels and reduces oxygen delivery
+        4. **Physical Inactivity**: Increases risk of obesity and related conditions
+        5. **Excessive Alcohol**: Can lead to high blood pressure and heart muscle damage
+        
+        Early detection and lifestyle modifications can significantly reduce risk.
+        """)
+        
+        st.warning("⚠️ This tool is for educational purposes only and should not replace professional medical advice.")
 
-if __name__ == "__main__":
-    main()
+# Initialize the app
+st.set_page_config(page_title="Heart Disease Risk Assessment", layout="wide")
+
+# Custom CSS
+st.markdown("""
+    <style>
+    .stButton>button {
+        width: 100%;
+        margin-top: 20px;
+    }
+    .stAlert {
+        padding: 10px;
+        margin: 10px 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Load and prepare data
+df = load_and_prepare_data()
+
+# Train model
+model, feature_names = train_model(df)
+
+# Create the prediction interface
+create_prediction_interface()
