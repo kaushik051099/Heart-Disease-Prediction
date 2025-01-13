@@ -13,7 +13,7 @@ def main():
     """)
     
     uploaded_file = st.file_uploader("Upload your dataset (CSV format)", type=['csv'])
-    default_file = "heart.csv"  # Specify the default dataset file name
+    default_file = "https://github.com/kaushik051099/Heart-Disease-Prediction/blob/e6115404f65287341ce603519891408b55e412e0/heart.csv"  # Specify the default dataset file name
     
     if uploaded_file is not None:
         # Load data from uploaded file
